@@ -33,13 +33,11 @@ const imageryOptions = [
 interface ControlPanelProps {
   onViewResult: (imagery: string, startDate: Date | undefined, endDate: Date | undefined) => void;
   onChangeDetection: () => void;
-  onGenerateSummary: () => void;
 }
 
 export const ControlPanel = ({ 
   onViewResult, 
-  onChangeDetection, 
-  onGenerateSummary 
+  onChangeDetection
 }: ControlPanelProps) => {
   const navigate = useNavigate();
   const [firstImagery, setFirstImagery] = useState("");
@@ -84,10 +82,6 @@ export const ControlPanel = ({
     toast.info("AI change detection initiated (Demo)");
   };
 
-  const handleGenerateSummary = () => {
-    onGenerateSummary();
-    toast.info("Generating AI summary report (Demo)");
-  };
 
   const handleGenerateReport = () => {
     if (!firstImagery || !startDate || !endDate) {
@@ -226,16 +220,6 @@ export const ControlPanel = ({
             >
               <Brain className="mr-2 h-4 w-4" />
               Change Detection (AI)
-            </Button>
-            
-            <Button 
-              onClick={handleGenerateSummary}
-              variant="outline"
-              className="w-full"
-              size="lg"
-            >
-              <FileText className="mr-2 h-4 w-4" />
-              Generate Summary
             </Button>
             
             <Button 

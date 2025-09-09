@@ -40,10 +40,6 @@ const Index = () => {
     toast.info("AI Change Detection: This feature will analyze changes between selected imagery");
   };
 
-  const handleGenerateSummary = () => {
-    // AI summary generation placeholder
-    toast.info("AI Summary: This feature will generate a comprehensive report of the current view");
-  };
 
   return (
     <div className="h-screen flex flex-col">
@@ -58,7 +54,6 @@ const Index = () => {
         <ControlPanel
           onViewResult={handleViewResult}
           onChangeDetection={handleChangeDetection}
-          onGenerateSummary={handleGenerateSummary}
         />
         
         <MapView
