@@ -8,9 +8,25 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Layers, Map as MapIcon, X, GripVertical } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Layers, Map as MapIcon, X, GripVertical, Settings, Calendar, Cloud, Satellite } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Fix Leaflet default icon issue
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -23,6 +39,23 @@ L.Icon.Default.mergeOptions({
 // NASA Earthdata API Configuration
 const NASA_API_KEY = "gfYDyORjbhmlc3V1ezHvkchbJaepOYCDEbKs6fgw";
 const GIBS_ENDPOINT = "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best";
+
+// USGS API Configuration
+const USGS_BASE = "https://m2m.cr.usgs.gov/api/api/json/stable";
+
+interface UsgsScene {
+  entityId: string;
+  displayId: string;
+  acquisitionDate: string;
+  cloudCover?: number;
+  browseUrl?: string;
+  spatialBounds?: {
+    north: number;
+    south: number;
+    east: number;
+    west: number;
+  };
+}
 
 interface MapViewProps {
   showComparison: boolean;
@@ -49,6 +82,16 @@ export const MapView = ({
   const [sliderPosition, setSliderPosition] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [showUsgsSettings, setShowUsgsSettings] = useState(false);
+  const [usgsCredentials, setUsgsCredentials] = useState({
+    username: localStorage.getItem("usgs_username") || "",
+    password: localStorage.getItem("usgs_password") || ""
+  });
+  const [usgsScenes, setUsgsScenes] = useState<UsgsScene[]>([]);
+  const [selectedBeforeScene, setSelectedBeforeScene] = useState<string>("");
+  const [selectedAfterScene, setSelectedAfterScene] = useState<string>("");
+  const [useUsgsImagery, setUseUsgsImagery] = useState(false);
+  const [loadingScenes, setLoadingScenes] = useState(false);
 
   // NASA GIBS Layer configurations
   const nasaImageryLayers = {
@@ -286,6 +329,104 @@ export const MapView = ({
 
   const switchBasemap = (basemapKey: string) => {
     setCurrentBasemap(basemapKey);
+  };
+
+  // USGS API Functions
+  async function usgsLogin(username: string, password: string): Promise<string> {
+    try {
+      const res = await fetch(`${USGS_BASE}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      const json = await res.json();
+      if (!json.data) throw new Error("USGS login failed");
+      return json.data;
+    } catch (error) {
+      toast.error("Failed to login to USGS");
+      throw error;
+    }
+  }
+
+  async function usgsSearch(
+    apiKey: string,
+    dataset: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<UsgsScene[]> {
+    try {
+      const res = await fetch(`${USGS_BASE}/scene-search`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "X-Auth-Token": apiKey 
+        },
+        body: JSON.stringify({
+          datasetName: dataset,
+          temporalFilter: {
+            startDate: format(startDate, "yyyy-MM-dd"),
+            endDate: format(endDate, "yyyy-MM-dd")
+          },
+          maxResults: 10,
+          startingNumber: 1,
+          sceneFilter: {
+            cloudCoverFilter: {
+              max: 30,
+              includeUnknown: false
+            }
+          },
+          metadataType: "full"
+        }),
+      });
+      const json = await res.json();
+      return json?.data?.results || [];
+    } catch (error) {
+      toast.error("Failed to search USGS scenes");
+      return [];
+    }
+  }
+
+  const loadUsgsScenes = async () => {
+    if (!startDate || !endDate) {
+      toast.error("Please select date range first");
+      return;
+    }
+
+    if (!usgsCredentials.username || !usgsCredentials.password) {
+      setShowUsgsSettings(true);
+      toast.info("Please configure USGS credentials");
+      return;
+    }
+
+    setLoadingScenes(true);
+    try {
+      const apiKey = await usgsLogin(usgsCredentials.username, usgsCredentials.password);
+      const scenes = await usgsSearch(apiKey, "LANDSAT_8_C2_L1", startDate, endDate);
+      
+      if (scenes.length === 0) {
+        toast.info("No USGS scenes found for selected date range");
+      } else {
+        setUsgsScenes(scenes);
+        toast.success(`Found ${scenes.length} USGS scenes`);
+        setUseUsgsImagery(true);
+        if (scenes.length > 0) {
+          setSelectedBeforeScene(scenes[0].entityId);
+          setSelectedAfterScene(scenes[Math.min(1, scenes.length - 1)].entityId);
+        }
+      }
+    } catch (error) {
+      console.error("USGS error:", error);
+    } finally {
+      setLoadingScenes(false);
+    }
+  };
+
+  const saveUsgsCredentials = () => {
+    localStorage.setItem("usgs_username", usgsCredentials.username);
+    localStorage.setItem("usgs_password", usgsCredentials.password);
+    setShowUsgsSettings(false);
+    toast.success("USGS credentials saved");
+    loadUsgsScenes();
   };
 
   if (showComparison && selectedImagery && startDate && endDate) {
