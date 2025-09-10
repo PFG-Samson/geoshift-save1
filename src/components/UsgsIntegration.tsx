@@ -55,31 +55,67 @@ export function UsgsIntegration({ startDate, endDate, onSceneSelect }: UsgsInteg
     }
 
     setLoading(true);
-    // Demo data - replace with actual USGS API calls
-    const demoScenes: UsgsScene[] = [
-      {
-        entityId: "LC08_L1TP_185054_20240115",
-        displayId: "Landsat 8 - Jan 15, 2024",
-        acquisitionDate: "2024-01-15",
-        cloudCover: 12,
-        browseUrl: "https://earthexplorer.usgs.gov/browse/landsat_8_c1/2024/185/054/LC08_L1TP_185054_20240115.jpg"
-      },
-      {
-        entityId: "LC08_L1TP_185054_20240131",
-        displayId: "Landsat 8 - Jan 31, 2024",
-        acquisitionDate: "2024-01-31",
-        cloudCover: 8,
-        browseUrl: "https://earthexplorer.usgs.gov/browse/landsat_8_c1/2024/185/054/LC08_L1TP_185054_20240131.jpg"
-      }
-    ];
     
-    setScenes(demoScenes);
-    if (demoScenes.length > 0) {
-      setSelectedBefore(demoScenes[0].entityId);
-      setSelectedAfter(demoScenes[Math.min(1, demoScenes.length - 1)].entityId);
+    try {
+      // Login to USGS
+      const loginRes = await fetch(`${USGS_BASE}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          username: credentials.username, 
+          password: credentials.password 
+        }),
+      });
+      
+      const loginData = await loginRes.json();
+      if (!loginData.data) {
+        throw new Error("USGS login failed");
+      }
+      
+      const apiKey = loginData.data;
+      
+      // Search for scenes
+      const searchRes = await fetch(`${USGS_BASE}/scene-search`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "X-Auth-Token": apiKey 
+        },
+        body: JSON.stringify({
+          datasetName: "landsat_ot_c2_l2", // Landsat 8/9 Collection 2 Level 2
+          temporalFilter: {
+            startDate: format(startDate, "yyyy-MM-dd"),
+            endDate: format(endDate, "yyyy-MM-dd")
+          },
+          maxResults: 10,
+          startingNumber: 1,
+          sceneFilter: {
+            cloudCoverFilter: {
+              max: 30,
+              includeUnknown: false
+            }
+          },
+          metadataType: "full"
+        }),
+      });
+      
+      const searchData = await searchRes.json();
+      const fetchedScenes = searchData?.data?.results || [];
+      
+      if (fetchedScenes.length === 0) {
+        toast.info("No USGS scenes found for selected date range");
+      } else {
+        setScenes(fetchedScenes);
+        setSelectedBefore(fetchedScenes[0].entityId);
+        setSelectedAfter(fetchedScenes[Math.min(1, fetchedScenes.length - 1)].entityId);
+        toast.success(`Found ${fetchedScenes.length} USGS satellite scenes`);
+      }
+    } catch (error) {
+      console.error("USGS API error:", error);
+      toast.error("Failed to fetch USGS imagery. Please check your credentials.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-    toast.success(`Found ${demoScenes.length} USGS scenes (demo data)`);
   };
 
   useEffect(() => {

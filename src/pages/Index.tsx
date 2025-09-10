@@ -11,6 +11,7 @@ const Index = () => {
   const [selectedImagery, setSelectedImagery] = useState<string>("");
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
+  const [usgsScenes, setUsgsScenes] = useState<{ before: any; after: any }>({ before: null, after: null });
 
   const handleClearSearch = () => {
     // Clear all search criteria
@@ -40,6 +41,13 @@ const Index = () => {
     toast.info("AI Change Detection: This feature will analyze changes between selected imagery");
   };
 
+  const handleUsgsSceneSelect = (beforeScene: any, afterScene: any) => {
+    setUsgsScenes({ before: beforeScene, after: afterScene });
+    if (beforeScene && afterScene) {
+      toast.success("USGS scenes selected for comparison");
+    }
+  };
+
 
   return (
     <div className="h-screen flex flex-col">
@@ -54,6 +62,7 @@ const Index = () => {
         <ControlPanel
           onViewResult={handleViewResult}
           onChangeDetection={handleChangeDetection}
+          onUsgsSceneSelect={handleUsgsSceneSelect}
         />
         
         <MapView
@@ -62,6 +71,7 @@ const Index = () => {
           selectedImagery={selectedImagery}
           startDate={startDate}
           endDate={endDate}
+          usgsScenes={usgsScenes}
         />
       </div>
       

@@ -63,6 +63,7 @@ interface MapViewProps {
   selectedImagery?: string;
   startDate?: Date;
   endDate?: Date;
+  usgsScenes?: { before: any; after: any };
 }
 
 export const MapView = ({ 
@@ -70,7 +71,8 @@ export const MapView = ({
   onComparisonClose, 
   selectedImagery,
   startDate,
-  endDate 
+  endDate,
+  usgsScenes
 }: MapViewProps) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapBeforeRef = useRef<HTMLDivElement>(null);
@@ -87,7 +89,7 @@ export const MapView = ({
     username: localStorage.getItem("usgs_username") || "",
     password: localStorage.getItem("usgs_password") || ""
   });
-  const [usgsScenes, setUsgsScenes] = useState<UsgsScene[]>([]);
+  const [loadedUsgsScenes, setLoadedUsgsScenes] = useState<UsgsScene[]>([]);
   const [selectedBeforeScene, setSelectedBeforeScene] = useState<string>("");
   const [selectedAfterScene, setSelectedAfterScene] = useState<string>("");
   const [useUsgsImagery, setUseUsgsImagery] = useState(false);
@@ -406,7 +408,7 @@ export const MapView = ({
       if (scenes.length === 0) {
         toast.info("No USGS scenes found for selected date range");
       } else {
-        setUsgsScenes(scenes);
+        setLoadedUsgsScenes(scenes);
         toast.success(`Found ${scenes.length} USGS scenes`);
         setUseUsgsImagery(true);
         if (scenes.length > 0) {

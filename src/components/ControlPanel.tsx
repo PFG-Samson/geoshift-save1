@@ -20,6 +20,7 @@ import { CalendarIcon, Play, Brain, FileText, BarChart3 } from "lucide-react";
 import { format, isBefore, isAfter } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { UsgsIntegration } from "@/components/UsgsIntegration";
 
 const imageryOptions = [
   { value: "modis", label: "MODIS Terra - True Color" },
@@ -33,11 +34,13 @@ const imageryOptions = [
 interface ControlPanelProps {
   onViewResult: (imagery: string, startDate: Date | undefined, endDate: Date | undefined) => void;
   onChangeDetection: () => void;
+  onUsgsSceneSelect?: (beforeScene: any, afterScene: any) => void;
 }
 
 export const ControlPanel = ({ 
   onViewResult, 
-  onChangeDetection
+  onChangeDetection,
+  onUsgsSceneSelect
 }: ControlPanelProps) => {
   const navigate = useNavigate();
   const [firstImagery, setFirstImagery] = useState("");
@@ -199,6 +202,16 @@ export const ControlPanel = ({
                 </Popover>
               </div>
             </div>
+          </div>
+
+          {/* USGS Integration */}
+          <div className="pt-4 border-t">
+            <h3 className="text-sm font-semibold mb-3">USGS Satellite Imagery</h3>
+            <UsgsIntegration 
+              startDate={startDate}
+              endDate={endDate}
+              onSceneSelect={onUsgsSceneSelect}
+            />
           </div>
 
           {/* Action Buttons */}
